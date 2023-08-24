@@ -75,11 +75,11 @@ hangUpButton.addEventListener("click", () => {
   submitToken.disabled = false;
 });
 //const{TextAnalysisClient, AzureKeyCredential } =require("@azure/ai-language-text");
-const textAnalyticsEndpoint = "https://callsenti.cognitiveservices.azure.com/";
-const textAnalyticsApiKey = "f756f078408c4e2ab88e6a02b4aaf1e6";
+const textAnalyticsEndpoint = " *****";
+const textAnalyticsApiKey = "*****";
 
-const speechApiKey = "a872a986c29b434fb7faae3d394e21f5";
-const speechEndpoint = "https://eastus.api.cognitive.microsoft.com/sts/v1.0/issuetoken";
+const speechApiKey = "****";
+const speechEndpoint = "****";
 
 document.getElementById("analyzeButton").addEventListener("click", async () => {
     const audioFile = document.getElementById("audioFile").files[0];
