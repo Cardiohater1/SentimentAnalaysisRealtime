@@ -1,4 +1,4 @@
-import { CallClient, CallFeature } from "@azure/communication-calling";
+import { CallClient } from "@azure/communication-calling";
 import * as SDK from "@azure/communication-calling";
 import { AzureCommunicationTokenCredential } from '@azure/communication-common';
 const config = require('./config.json');
@@ -16,7 +16,10 @@ const submitToken = document.getElementById("token-submit");
 const callButton = document.getElementById("call-button");
 const hangUpButton = document.getElementById("hang-up-button");
 const captionsStartButton = document.getElementById("captions-start-button");
-const captionsArea = document.getElementById("captions-area");
+
+userToken.value = config.USER_TOKEN;
+
+// const captionsArea = document.getElementById("captions-area");
 
 submitToken.addEventListener("click", async () => {
   const callClient = new CallClient();
@@ -26,6 +29,7 @@ submitToken.addEventListener("click", async () => {
       callAgent = await callClient.createCallAgent(tokenCredential);
       callButton.disabled = false;
       submitToken.disabled = true;
+      calleeInput.value = config.USER_IDENTITY_2;
     } catch(error) {
       window.alert("Please submit a valid token!");
     }
@@ -40,35 +44,36 @@ callButton.addEventListener("click", async () => {
   );
 
   const captionsHandler = (data) => {
-    if (data.resultType === 'final') {
-      console.log('Speaker: ' + data.speaker)
-      console.log('Only Finalized: ' + data.resultType)
-      console.log('Caption: ' + data.spokenText)
+    if (data.resultType === 'Final') {
+      console.log(
+        (data.speaker.identifier.id 
+        ? data.speaker.identifier.id 
+        : data.speaker.displayName 
+        ? data.speaker.displayName 
+        : data.speaker.identifier.communicationUserId 
+        ? data.speaker.identifier.communicationUserId : 'Unknown') + ": " + data.spokenText
+        )
     }
 
   };
   try {
-    call.on('stateChanged', () => { 
+    call.on('stateChanged', async () => { 
       if (call.state === 'Connected')
       {
-        console.log("Connected State");
         if (call.feature(SDK.Features.Captions)) {
-          callCaptionsApi = call.feature(SDK.Features.Captions);
-          console.log("Captions Initialized");
+          callCaptionsApi = await call.feature(SDK.Features.Captions);
           captionsStartButton.disabled = false;
           try {
             captionsStartButton.addEventListener("click", async () => {
-              callCaptionsApi.captions.startCaptions();
+              captionsStartButton.disabled = true;
+              await callCaptionsApi.captions.startCaptions();
+              if (callCaptionsApi.captions.kind === 'Captions') {
+                callCaptionsApi.captions.on('CaptionsReceived', captionsHandler);
+              }
             })
           } catch (e) {
-            console.log('failed to add event listener')
+            console.warn('failed to add event listener')
           }
-          console.log('attempting to add captions received handler');
-          
-          if (callCaptionsApi.captions.kind === 'Captions') {
-            callCaptionsApi.captions.on('CaptionsReceived', captionsHandler);
-          }
-          console.log("End of Connected state handler");
         }
       }
     })
@@ -159,6 +164,3 @@ function updateUI(sentiment) {
     const resultDiv = document.getElementById("result");
     resultDiv.textContent = `Sentiment: ${sentiment}`;
 }
-
-
-
