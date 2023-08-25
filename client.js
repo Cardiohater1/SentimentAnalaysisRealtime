@@ -1,6 +1,7 @@
 import { CallClient, CallFeature } from "@azure/communication-calling";
-//import * as SDK from "@azure/communication-calling";
+import * as SDK from "@azure/communication-calling";
 import { AzureCommunicationTokenCredential } from '@azure/communication-common';
+const config = require('./config.json');
 //import {} from'microsoft-cognitiveservices-speech-sdk';
 //const fs = require("fs");
 const sdk = require("microsoft-cognitiveservices-speech-sdk");
@@ -8,11 +9,14 @@ const sdk = require("microsoft-cognitiveservices-speech-sdk");
 let call;
 let callAgent;
 let tokenCredential;
+let callCaptionsApi;
 const userToken = document.getElementById("token-input"); 
 const calleeInput = document.getElementById("callee-id-input");
 const submitToken = document.getElementById("token-submit");
 const callButton = document.getElementById("call-button");
 const hangUpButton = document.getElementById("hang-up-button");
+const captionsStartButton = document.getElementById("captions-start-button");
+const captionsArea = document.getElementById("captions-area");
 
 submitToken.addEventListener("click", async () => {
   const callClient = new CallClient();
@@ -35,30 +39,44 @@ callButton.addEventListener("click", async () => {
       {}
   );
 
-  const captionsHandler = (data) => {console.log(data)};
-try {
-  console.log('*****start******') 
-  call.on('stateChanged', () => { 
-    console.log('state changed to: ' + call.state);
-    if (call.state === 'Connected')
-     {
-      console.log('inside if');
-    //const callCaptionsApi = call.feature(SDK.Features.Captions);
-    const callCaptionsApi = call.feature(CallFeature.Features.Captions);
-    console.log('hitcaption')
+  const captionsHandler = (data) => {
+    if (data.resultType === 'final') {
+      console.log('Speaker: ' + data.speaker)
+      console.log('Only Finalized: ' + data.resultType)
+      console.log('Caption: ' + data.spokenText)
+    }
+
+  };
+  try {
+    call.on('stateChanged', () => { 
+      if (call.state === 'Connected')
+      {
+        console.log("Connected State");
+        if (call.feature(SDK.Features.Captions)) {
+          callCaptionsApi = call.feature(SDK.Features.Captions);
+          console.log("Captions Initialized");
+          captionsStartButton.disabled = false;
+          try {
+            captionsStartButton.addEventListener("click", async () => {
+              callCaptionsApi.captions.startCaptions();
+            })
+          } catch (e) {
+            console.log('failed to add event listener')
+          }
+          console.log('attempting to add captions received handler');
+          
+          if (callCaptionsApi.captions.kind === 'Captions') {
+            callCaptionsApi.captions.on('CaptionsReceived', captionsHandler);
+          }
+          console.log("End of Connected state handler");
+        }
+      }
+    })
+  } 
+  catch (e) {
+      console.log('Internal error occurred when Starting Captions')
+      console.log (e)
   }
-    
-    } )
-    //callCaptionsApi.on('captionsReceived', captionsHandler);
-    //if (!callCaptionsApi.isCaptionsActive) {
-      //  await callCaptionsApi.startCaptions({ spokenLanguage: 'en-us' });
-    //}
-    //console.log('****end******') 
-} 
-catch (e) {
-    console.log('Internal error occurred when Starting Captions')
-    console.log (e)
-}
 
   // toggle button states
   hangUpButton.disabled = false;
@@ -75,11 +93,11 @@ hangUpButton.addEventListener("click", () => {
   submitToken.disabled = false;
 });
 //const{TextAnalysisClient, AzureKeyCredential } =require("@azure/ai-language-text");
-const textAnalyticsEndpoint = " *****";
-const textAnalyticsApiKey = "*****";
+const textAnalyticsEndpoint = config.TEXT_ANALYTICS_ENDPOINT;
+const textAnalyticsApiKey = config.TEXT_ANALYTICS_API_KEY;
 
-const speechApiKey = "****";
-const speechEndpoint = "****";
+const speechApiKey = config.SPEECH_API_KEY;
+const speechEndpoint = config.SPEECH_ENDPOINT;
 
 document.getElementById("analyzeButton").addEventListener("click", async () => {
     const audioFile = document.getElementById("audioFile").files[0];
