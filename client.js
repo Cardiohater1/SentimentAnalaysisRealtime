@@ -2,9 +2,17 @@ import { CallClient } from "@azure/communication-calling";
 import * as SDK from "@azure/communication-calling";
 import { AzureCommunicationTokenCredential } from '@azure/communication-common';
 const config = require('./config.json');
-//import {} from'microsoft-cognitiveservices-speech-sdk';
+import {} from'microsoft-cognitiveservices-speech-sdk';
 //const fs = require("fs");
 const sdk = require("microsoft-cognitiveservices-speech-sdk");
+// const { CallClient } = require("@azure/communication-calling");
+// const { AzureCommunicationTokenCredential } = require('@azure/communication-common');
+// const sdk = require("microsoft-cognitiveservices-speech-sdk");
+ const { TextAnalyticsClient, AzureKeyCredential } = require("@azure/ai-text-analytics");
+// const config = require('./config.json');
+
+
+
 
 let call;
 let callAgent;
@@ -19,7 +27,53 @@ const captionsStartButton = document.getElementById("captions-start-button");
 
 userToken.value = config.USER_TOKEN;
 
-// const captionsArea = document.getElementById("captions-area");
+// // const captionsArea = document.getElementById("captions-area");
+// const sentimentColors = [];
+// function drawWavySineWave() {
+//   const canvasWidth = sineWaveCanvas.width;
+//   const canvasHeight = sineWaveCanvas.height;
+//   canvasContext.clearRect(0, 0, canvasWidth, canvasHeight);
+
+//   // Draw the wavy sine wave
+//   canvasContext.beginPath();
+//   for (let x = 0; x < canvasWidth; x += 5) {
+//     const yOffset = Math.sin((x + Date.now() * 0.01) / 20) * 30; // Add animation to the wave
+//     const y = canvasHeight / 2 + yOffset;
+
+//     const color = sentimentColors[x] || "#FFFFFF"; // Use stored sentiment color or default to white
+//     canvasContext.fillStyle = color;
+//     canvasContext.fillRect(x, y, 5, 5); // Adjust the size of wave segments as needed
+//   }
+//   canvasContext.closePath();
+// }
+
+const sineWaveCanvas = document.getElementById("sineWaveCanvas");
+const canvasContext = sineWaveCanvas.getContext("2d");
+
+function updateSineWaveColor(sentiment) {
+  // Choose colors based on sentiment
+  let fillColor = "#FFFFFF"; // Default color (white)
+  if (sentiment === "positive") {
+    fillColor = "#00FF00"; // Green for positive sentiment
+  } else if (sentiment === "neutral") {
+    fillColor = "#FFFF00"; // Yellow for neutral sentiment
+  } else if (sentiment === "negative") {
+    fillColor = "#FF0000"; // Red for negative sentiment
+  }
+
+  // Clear canvas and draw colored sine wave
+  canvasContext.clearRect(0, 0, sineWaveCanvas.width, sineWaveCanvas.height);
+  canvasContext.beginPath();
+  for (let x = 0; x < sineWaveCanvas.width; x += 5) {
+    const y = sineWaveCanvas.height / 2 + Math.sin(x / 20) * 50; // Adjust the sine wave parameters as needed
+    canvasContext.lineTo(x, y);
+  }
+  canvasContext.lineTo(sineWaveCanvas.width, sineWaveCanvas.height);
+  canvasContext.lineTo(0, sineWaveCanvas.height);
+  canvasContext.closePath();
+  canvasContext.fillStyle = fillColor;
+  canvasContext.fill();
+}
 
 submitToken.addEventListener("click", async () => {
   const callClient = new CallClient();
@@ -43,19 +97,36 @@ callButton.addEventListener("click", async () => {
       {}
   );
 
-  const captionsHandler = (data) => {
-    if (data.resultType === 'Final') {
-      console.log(
-        (data.speaker.identifier.id 
-        ? data.speaker.identifier.id 
-        : data.speaker.displayName 
-        ? data.speaker.displayName 
-        : data.speaker.identifier.communicationUserId 
-        ? data.speaker.identifier.communicationUserId : 'Unknown') + ": " + data.spokenText
-        )
-    }
+  // const captionsHandler = (data) => {
+  //   if (data.resultType === 'Final') {
+  //     console.log(
+  //       (data.speaker.identifier.id 
+  //       ? data.speaker.identifier.id 
+  //       : data.speaker.displayName 
+  //       ? data.speaker.displayName 
+  //       : data.speaker.identifier.communicationUserId 
+  //       ? data.speaker.identifier.communicationUserId : 'Unknown') + ": " + data.spokenText
+  //       )
+  //   }
 
-  };
+  // };
+
+  const captionsHandler = async (data) => {
+ //   if (data.resultType === 'Final') {
+        const spokenText = data.spokenText;
+        const sentiment = await performSentimentAnalysis(spokenText);
+        console.log(
+            (data.speaker.identifier.id 
+            ? data.speaker.identifier.id 
+            : data.speaker.displayName 
+            ? data.speaker.displayName 
+            : data.speaker.identifier.communicationUserId 
+            ? data.speaker.identifier.communicationUserId : 'Unknown') + ": " + spokenText +
+            "\nSentiment: " + sentiment
+        );
+   // }
+};
+
   try {
     call.on('stateChanged', async () => { 
       if (call.state === 'Connected')
@@ -148,17 +219,30 @@ async function convertAudioToTranscription(audioFile) {
     });
 }
 
-async function performSentimentAnalysis(transcribedText) {
-    const textAnalyticsClient = new sdk.TextAnalytics.TextAnalyticsClient(
-        textAnalyticsEndpoint,
-        new sdk.TextAnalytics.ApiKeyCredential(textAnalyticsApiKey)
-    );
+// async function performSentimentAnalysis(transcribedText) {
+//     const textAnalyticsClient = new sdk.TextAnalytics.TextAnalyticsClient(
+//         textAnalyticsEndpoint,
+//         new sdk.TextAnalytics.ApiKeyCredential(textAnalyticsApiKey)
+//     );
 
-    const sentimentResult = await textAnalyticsClient.analyzeSentiment([transcribedText]);
-    const sentiment = sentimentResult[0].sentiment;
+//     const sentimentResult = await textAnalyticsClient.analyzeSentiment([transcribedText]);
+//     const sentiment = sentimentResult[0].sentiment;
 
-    return sentiment;
+//     return sentiment;
+// }
+async function performSentimentAnalysis(text) {
+  // const textAnalyticsClient = new TextAnalyticsClient(textAnalyticsEndpoint,);
+  //     new AzureKeyCredential(textAnalyticsApiKey)
+
+  const textAnalyticsClient = new TextAnalyticsClient(textAnalyticsEndpoint, new AzureKeyCredential(textAnalyticsApiKey));
+
+  const sentimentResult = await textAnalyticsClient.analyzeSentiment([text]);
+  const sentiment = sentimentResult[0].sentiment;
+  updateSineWaveColor(sentiment);
+
 }
+
+animate(); 
 
 function updateUI(sentiment) {
     const resultDiv = document.getElementById("result");
